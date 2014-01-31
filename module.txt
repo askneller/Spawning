@@ -1,0 +1,9 @@
+{
+    "id" : "Spawning",
+    "version" : "0.1.0",
+    "author" : "Cervator, Esapetri",
+    "displayName" : "Spawning",
+    "description" : "Supports an assortment of ways to create Spawners for creatures and flag creatures as Spawnable",
+    "dependencies" : [],
+    "isServerSideOnly" : false
+}
