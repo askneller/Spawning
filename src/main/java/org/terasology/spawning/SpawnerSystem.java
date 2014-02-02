@@ -25,11 +25,10 @@ import org.terasology.entitySystem.entity.EntityRef;
 import org.terasology.entitySystem.prefab.Prefab;
 import org.terasology.entitySystem.prefab.PrefabManager;
 import org.terasology.entitySystem.systems.UpdateSubscriberSystem;
-import org.terasology.logic.characters.CharacterMovementComponent;
+import org.terasology.logic.common.DisplayNameComponent;
 import org.terasology.registry.In;
 import org.terasology.logic.ai.SimpleAIComponent;
 import org.terasology.logic.inventory.InventoryComponent;
-import org.terasology.logic.inventory.ItemComponent;
 import org.terasology.logic.inventory.SlotBasedInventoryManager;
 import org.terasology.logic.location.LocationComponent;
 import org.terasology.entitySystem.systems.RegisterMode;
@@ -270,18 +269,18 @@ public class SpawnerSystem implements UpdateSubscriberSystem {
                 if (neededItem != null) {
                     logger.info("This spawnable has an item demand on spawning: {} - Does its spawner have an inventory?", neededItem);
                     if (entity.hasComponent(InventoryComponent.class)) {
-                        InventoryComponent invComp = entity.getComponent(InventoryComponent.class);
                         logger.info("Yes - it has an inventory - entity: {}", entity);
 
                         BlockFamily neededFamily = blockMan.getBlockFamily(neededItem);
                         logger.info("Needed block family: {}", neededFamily);
+                        // TODO: Improve from current evaluation of the first slot only (ideal for single-slot invs)
                         EntityRef firstSlot = invMan.getItemInSlot(entity, 0);
                         logger.info("First slot {}", firstSlot);
 
-                        ItemComponent item = firstSlot.getComponent(ItemComponent.class);
-                        if (item != null) {
-                            logger.info("Got its ItemComponent: {} and its name: {}", item, item.name);
-                            if (neededFamily.getDisplayName().equals(item.name)) {
+                        DisplayNameComponent displayName = firstSlot.getComponent(DisplayNameComponent.class);
+                        if (displayName != null) {
+                            logger.info("Got its DisplayName: {}", displayName.name);
+                            if (neededFamily.getDisplayName().equals(displayName.name)) {
                                 logger.info("Found the item needed to spawn stuff! Decrementing by 1 then spawning");
 
                                 EntityRef result = invMan.removeItem(entity, firstSlot, 1);
