@@ -24,15 +24,16 @@ import org.terasology.entitySystem.entity.EntityManager;
 import org.terasology.entitySystem.entity.EntityRef;
 import org.terasology.entitySystem.prefab.Prefab;
 import org.terasology.entitySystem.prefab.PrefabManager;
+import org.terasology.entitySystem.systems.BaseComponentSystem;
+import org.terasology.entitySystem.systems.RegisterMode;
+import org.terasology.entitySystem.systems.RegisterSystem;
 import org.terasology.entitySystem.systems.UpdateSubscriberSystem;
 import org.terasology.logic.common.DisplayNameComponent;
 import org.terasology.registry.In;
 import org.terasology.logic.ai.SimpleAIComponent;
 import org.terasology.logic.inventory.InventoryComponent;
-import org.terasology.logic.inventory.SlotBasedInventoryManager;
+//import org.terasology.logic.inventory.SlotBasedInventoryManager;
 import org.terasology.logic.location.LocationComponent;
-import org.terasology.entitySystem.systems.RegisterMode;
-import org.terasology.entitySystem.systems.RegisterSystem;
 import org.terasology.monitoring.PerformanceMonitor;
 import org.terasology.utilities.random.FastRandom;
 import org.terasology.world.WorldProvider;
@@ -50,7 +51,7 @@ import java.util.Set;
  * @author Rasmus 'Cervator' Praestholm <cervator@gmail.com>
  */
 @RegisterSystem(RegisterMode.AUTHORITY)
-public class SpawnerSystem implements UpdateSubscriberSystem {
+public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscriberSystem {
     private static final Logger logger = LoggerFactory.getLogger(SpawnerSystem.class);
 
     @In
@@ -65,8 +66,8 @@ public class SpawnerSystem implements UpdateSubscriberSystem {
     @In
     private WorldProvider worldProvider;
 
-    @In
-    private SlotBasedInventoryManager invMan;
+    //@In
+    //private SlotBasedInventoryManager invMan;
 
     private final FastRandom random = new FastRandom();
 
@@ -274,17 +275,18 @@ public class SpawnerSystem implements UpdateSubscriberSystem {
                         BlockFamily neededFamily = blockMan.getBlockFamily(neededItem);
                         logger.info("Needed block family: {}", neededFamily);
                         // TODO: Improve from current evaluation of the first slot only (ideal for single-slot invs)
-                        EntityRef firstSlot = invMan.getItemInSlot(entity, 0);
-                        logger.info("First slot {}", firstSlot);
+                        // TODO: Also needs to be updated to match recent engine changes, but not really super important ...
+                        //EntityRef firstSlot = invMan.getItemInSlot(entity, 0);
+                        //logger.info("First slot {}", firstSlot);
 
-                        DisplayNameComponent displayName = firstSlot.getComponent(DisplayNameComponent.class);
+                        DisplayNameComponent displayName = null; //firstSlot.getComponent(DisplayNameComponent.class);
                         if (displayName != null) {
                             logger.info("Got its DisplayName: {}", displayName.name);
                             if (neededFamily.getDisplayName().equals(displayName.name)) {
                                 logger.info("Found the item needed to spawn stuff! Decrementing by 1 then spawning");
 
-                                EntityRef result = invMan.removeItem(entity, firstSlot, 1);
-                                logger.info("Result from decrementing: {}", result);
+                                //EntityRef result = invMan.removeItem(entity, firstSlot, 1);
+                                //logger.info("Result from decrementing: {}", result);
                             } else {
                                 logger.info("But that item didn't match what the spawn needed to consume. No spawn!");
                                 continue;
