@@ -22,6 +22,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terasology.entitySystem.entity.EntityManager;
 import org.terasology.entitySystem.entity.EntityRef;
+import org.terasology.entitySystem.entity.lifecycleEvents.BeforeRemoveComponent;
+import org.terasology.entitySystem.entity.lifecycleEvents.OnAddedComponent;
+import org.terasology.entitySystem.event.ReceiveEvent;
 import org.terasology.entitySystem.prefab.Prefab;
 import org.terasology.entitySystem.prefab.PrefabManager;
 import org.terasology.entitySystem.systems.BaseComponentSystem;
@@ -29,6 +32,8 @@ import org.terasology.entitySystem.systems.RegisterMode;
 import org.terasology.entitySystem.systems.RegisterSystem;
 import org.terasology.entitySystem.systems.UpdateSubscriberSystem;
 import org.terasology.logic.common.DisplayNameComponent;
+import org.terasology.logic.delay.DelayedActionSystem;
+import org.terasology.logic.delay.PeriodicActionTriggeredEvent;
 import org.terasology.registry.In;
 import org.terasology.logic.ai.SimpleAIComponent;
 import org.terasology.logic.inventory.InventoryComponent;
@@ -52,6 +57,10 @@ import java.util.Set;
  */
 @RegisterSystem(RegisterMode.AUTHORITY)
 public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscriberSystem {
+
+    /** Name for the scheduler to use for periodic spawning */
+    public static final String PERIODIC_SPAWNING = "PeriodicSpawning";
+
     private static final Logger logger = LoggerFactory.getLogger(SpawnerSystem.class);
 
     @In
@@ -65,6 +74,9 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
 
     @In
     private WorldProvider worldProvider;
+
+    @In
+    private DelayedActionSystem scheduler;
 
     //@In
     //private SlotBasedInventoryManager invMan;
@@ -111,10 +123,45 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
     }
 
     /**
+     * On entity creation or attachment of SpawnerComponent to an entity schedule events to spawn things periodically.
+     * @param event the OnAddedComponent event to react to.
+     * @param spawner the spawner entity being created or modified.
+     */
+    @ReceiveEvent(components = {SpawnerComponent.class})
+    public void onNewSpawner(OnAddedComponent event, EntityRef spawner) {
+        SpawnerComponent spawnerComponent = spawner.getComponent(SpawnerComponent.class);
+
+        // Schedule a periodic action for the Spawner to spawn stuff. Start after one period of time, then recur.
+        scheduler.addPeriodicAction(spawner, PERIODIC_SPAWNING, spawnerComponent.period, spawnerComponent.period);
+    }
+
+    /**
+     * On entity destruction or detachment of SpawnerComponent to an entity cancel the schedule for spawning
+     * @param event the BeforeRemoveComponent event to react to.
+     * @param spawner the spawner entity being destroyed or modified.
+     */
+    @ReceiveEvent(components = {SpawnerComponent.class})
+    public void onRemovedSpawner(BeforeRemoveComponent event, EntityRef spawner) {
+        scheduler.cancelPeriodicAction(spawner, PERIODIC_SPAWNING);
+    }
+
+    /**
+     * A Spawner has "ticked" for its duration between spawning attempts, see if anything should be spawned.
+     * @param event the PeriodicActionTriggeredEvent from the scheduler to react to.
+     * @param spawner the spawner entity about to be processed.
+     */
+    @ReceiveEvent(components = {SpawnerComponent.class})
+    public void onSpawn(PeriodicActionTriggeredEvent event, EntityRef spawner) {
+        // TODO: Put all the fancy spawning code here. Unless there should be more distinct spawning scenarios
+        // Example: RangedSpawning, IngredientSpawning, PlayerSpawning, etc
+    }
+
+    /**
      * Responsible for tick update - see if we should attempt to spawn something
      *
      * @param delta time step since last update
      */
+    // TODO: Switch away from UpdateSubScriberSystem to the DelaySystem and handle tick "throttle" there. Then simplify
     public void update(float delta) {
         // Do a time check to see if we should even bother calculating stuff (really only needed every second or so)
         // Keep a ms counter handy, delta is in seconds
@@ -149,7 +196,7 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
                 }
 
                 //logger.info("tick is " + tick + ", lastTick is " + spawnerComp.lastTick);
-                if (tick - spawnerComp.lastTick < spawnerComp.timeBetweenSpawns) {
+                if (tick - spawnerComp.lastTick < spawnerComp.period) {
                     return;
                 }
 

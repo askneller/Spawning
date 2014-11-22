@@ -36,8 +36,9 @@ public class SpawnerComponent implements Component {
     public List<String> types = Lists.newArrayList();
     
     public long lastTick;
-    
-    public int timeBetweenSpawns = 5000;
+
+    /** Duration in ms between spawning attempts for this Spawner */
+    public int period = 5000;
 
     public int maxMobsPerSpawner = 16;
     
