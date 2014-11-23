@@ -32,7 +32,7 @@ import org.terasology.entitySystem.systems.RegisterMode;
 import org.terasology.entitySystem.systems.RegisterSystem;
 import org.terasology.entitySystem.systems.UpdateSubscriberSystem;
 import org.terasology.logic.common.DisplayNameComponent;
-import org.terasology.logic.delay.DelayedActionSystem;
+import org.terasology.logic.delay.DelayManager;
 import org.terasology.logic.delay.PeriodicActionTriggeredEvent;
 import org.terasology.registry.In;
 import org.terasology.logic.ai.SimpleAIComponent;
@@ -76,7 +76,8 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
     private WorldProvider worldProvider;
 
     @In
-    private DelayedActionSystem scheduler;
+    private DelayManager scheduler;
+    // TODO: Huh, why was this null when using DelayedActionSystem? Can see @Share doing something, but what's the reasoning? Better way to warn? Findbugs?
 
     //@In
     //private SlotBasedInventoryManager invMan;
@@ -124,12 +125,14 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
 
     /**
      * On entity creation or attachment of SpawnerComponent to an entity schedule events to spawn things periodically.
+     * We also require the Spawner to have a Location to avoid situations like Spawner blocks in an inventory.
      * @param event the OnAddedComponent event to react to.
      * @param spawner the spawner entity being created or modified.
      */
-    @ReceiveEvent(components = {SpawnerComponent.class})
+    @ReceiveEvent(components = {SpawnerComponent.class, LocationComponent.class})
     public void onNewSpawner(OnAddedComponent event, EntityRef spawner) {
         SpawnerComponent spawnerComponent = spawner.getComponent(SpawnerComponent.class);
+        logger.info("In onNewSpawner with SpawnerComponent {}", spawnerComponent);
 
         // Schedule a periodic action for the Spawner to spawn stuff. Start after one period of time, then recur.
         scheduler.addPeriodicAction(spawner, PERIODIC_SPAWNING, spawnerComponent.period, spawnerComponent.period);
@@ -140,8 +143,10 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
      * @param event the BeforeRemoveComponent event to react to.
      * @param spawner the spawner entity being destroyed or modified.
      */
-    @ReceiveEvent(components = {SpawnerComponent.class})
+    @ReceiveEvent(components = {SpawnerComponent.class, LocationComponent.class})
     public void onRemovedSpawner(BeforeRemoveComponent event, EntityRef spawner) {
+        logger.info("In onRemovedSpawner");
+        logger.info("Has the right action? {}", scheduler.hasPeriodicAction(spawner, PERIODIC_SPAWNING));
         scheduler.cancelPeriodicAction(spawner, PERIODIC_SPAWNING);
     }
 
@@ -154,6 +159,7 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
     public void onSpawn(PeriodicActionTriggeredEvent event, EntityRef spawner) {
         // TODO: Put all the fancy spawning code here. Unless there should be more distinct spawning scenarios
         // Example: RangedSpawning, IngredientSpawning, PlayerSpawning, etc
+        logger.info("Spawner {} is ticking", spawner);
     }
 
     /**
