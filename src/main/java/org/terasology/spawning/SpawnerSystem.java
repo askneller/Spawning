@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 MovingBlocks
+ * Copyright 2015 MovingBlocks
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import org.terasology.entitySystem.systems.UpdateSubscriberSystem;
 import org.terasology.logic.common.DisplayNameComponent;
 import org.terasology.logic.delay.DelayManager;
 import org.terasology.logic.delay.PeriodicActionTriggeredEvent;
+import org.terasology.math.geom.Vector3f;
 import org.terasology.registry.In;
 import org.terasology.logic.ai.SimpleAIComponent;
 import org.terasology.logic.inventory.InventoryComponent;
@@ -45,7 +46,6 @@ import org.terasology.world.WorldProvider;
 import org.terasology.world.block.BlockManager;
 import org.terasology.world.block.family.BlockFamily;
 
-import javax.vecmath.Vector3f;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
