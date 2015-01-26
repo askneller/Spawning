@@ -39,7 +39,7 @@ public class SpawnableComponent implements Component {
     public String itemToConsume;
 
     /** What made this Spawnable? */
-    public EntityRef parent = null;
+    public EntityRef parent =  EntityRef.NULL;
     
     //TODO add darkness level and biome when map generation has reached better level
 }
