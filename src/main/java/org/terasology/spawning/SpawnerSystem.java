@@ -147,7 +147,9 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
     public void onRemovedSpawner(BeforeRemoveComponent event, EntityRef spawner) {
         logger.info("In onRemovedSpawner");
         logger.info("Has the right action? {}", scheduler.hasPeriodicAction(spawner, PERIODIC_SPAWNING));
-        scheduler.cancelPeriodicAction(spawner, PERIODIC_SPAWNING);
+        if (scheduler.hasPeriodicAction(spawner, PERIODIC_SPAWNING)) {
+            scheduler.cancelPeriodicAction(spawner, PERIODIC_SPAWNING);
+        }
     }
 
     /**
