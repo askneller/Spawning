@@ -1,18 +1,5 @@
-/*
- * Copyright 2015 MovingBlocks
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *  http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2020 The Terasology Foundation
+// SPDX-License-Identifier: Apache-2.0
 package org.terasology.spawning;
 
 import com.google.common.collect.HashMultimap;
@@ -20,31 +7,30 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.SetMultimap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.terasology.entitySystem.entity.EntityManager;
-import org.terasology.entitySystem.entity.EntityRef;
-import org.terasology.entitySystem.entity.lifecycleEvents.BeforeRemoveComponent;
-import org.terasology.entitySystem.entity.lifecycleEvents.OnAddedComponent;
-import org.terasology.entitySystem.event.ReceiveEvent;
-import org.terasology.entitySystem.prefab.Prefab;
-import org.terasology.entitySystem.prefab.PrefabManager;
-import org.terasology.entitySystem.systems.BaseComponentSystem;
-import org.terasology.entitySystem.systems.RegisterMode;
-import org.terasology.entitySystem.systems.RegisterSystem;
-import org.terasology.entitySystem.systems.UpdateSubscriberSystem;
-import org.terasology.logic.common.DisplayNameComponent;
-import org.terasology.logic.delay.DelayManager;
-import org.terasology.logic.delay.PeriodicActionTriggeredEvent;
+import org.terasology.engine.entitySystem.entity.EntityManager;
+import org.terasology.engine.entitySystem.entity.EntityRef;
+import org.terasology.engine.entitySystem.entity.lifecycleEvents.BeforeRemoveComponent;
+import org.terasology.engine.entitySystem.entity.lifecycleEvents.OnAddedComponent;
+import org.terasology.engine.entitySystem.event.ReceiveEvent;
+import org.terasology.engine.entitySystem.prefab.Prefab;
+import org.terasology.engine.entitySystem.prefab.PrefabManager;
+import org.terasology.engine.entitySystem.systems.BaseComponentSystem;
+import org.terasology.engine.entitySystem.systems.RegisterMode;
+import org.terasology.engine.entitySystem.systems.RegisterSystem;
+import org.terasology.engine.entitySystem.systems.UpdateSubscriberSystem;
+import org.terasology.engine.logic.ai.SimpleAIComponent;
+import org.terasology.engine.logic.common.DisplayNameComponent;
+import org.terasology.engine.logic.delay.DelayManager;
+import org.terasology.engine.logic.delay.PeriodicActionTriggeredEvent;
+import org.terasology.engine.logic.location.LocationComponent;
+import org.terasology.engine.monitoring.PerformanceMonitor;
+import org.terasology.engine.registry.In;
+import org.terasology.engine.utilities.random.FastRandom;
+import org.terasology.engine.world.WorldProvider;
+import org.terasology.engine.world.block.BlockManager;
+import org.terasology.engine.world.block.family.BlockFamily;
+import org.terasology.inventory.logic.InventoryComponent;
 import org.terasology.math.geom.Vector3f;
-import org.terasology.registry.In;
-import org.terasology.logic.ai.SimpleAIComponent;
-import org.terasology.logic.inventory.InventoryComponent;
-//import org.terasology.logic.inventory.SlotBasedInventoryManager;
-import org.terasology.logic.location.LocationComponent;
-import org.terasology.monitoring.PerformanceMonitor;
-import org.terasology.utilities.random.FastRandom;
-import org.terasology.world.WorldProvider;
-import org.terasology.world.block.BlockManager;
-import org.terasology.world.block.family.BlockFamily;
 
 import java.util.Collection;
 import java.util.List;
@@ -58,40 +44,35 @@ import java.util.Set;
 @RegisterSystem(RegisterMode.AUTHORITY)
 public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscriberSystem {
 
-    /** Name for the scheduler to use for periodic spawning */
+    /**
+     * Name for the scheduler to use for periodic spawning
+     */
     public static final String PERIODIC_SPAWNING = "PeriodicSpawning";
 
     private static final Logger logger = LoggerFactory.getLogger(SpawnerSystem.class);
-
+    private final FastRandom random = new FastRandom();
+    /**
+     * Cache containing Spawnable prefabs mapped to their spawnable "tags" - each tag may reference multiple prefabs and
+     * each prefab may have multiple tags
+     */
+    private final SetMultimap<String, Prefab> typeLists = HashMultimap.create();
     @In
     private EntityManager entityManager;
-
     @In
     private PrefabManager prefabManager;
-
     @In
     private BlockManager blockMan;
-
-    @In
-    private WorldProvider worldProvider;
-
-    @In
-    private DelayManager scheduler;
-    // TODO: Huh, why was this null when using DelayedActionSystem? Can see @Share doing something, but what's the reasoning? Better way to warn? Findbugs?
+    // TODO: Huh, why was this null when using DelayedActionSystem? Can see @Share doing something, but what's the 
+    //  reasoning? Better way to warn? Findbugs?
 
     //@In
     //private SlotBasedInventoryManager invMan;
-
-    private final FastRandom random = new FastRandom();
-
+    @In
+    private WorldProvider worldProvider;
+    @In
+    private DelayManager scheduler;
     private long tick;
     private long classLastTick;
-
-    /**
-     * Cache containing Spawnable prefabs mapped to their spawnable "tags" - each tag may reference multiple prefabs
-     * and each prefab may have multiple tags
-     * */
-    private SetMultimap<String, Prefab> typeLists = HashMultimap.create();
 
     @Override
     public void initialise() {
@@ -99,8 +80,8 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
     }
 
     /**
-     * Looks through all loaded prefabs and determines which are spawnable, then stores them in a local SetMultimap
-     * This method should be called (or adders/removers?) whenever available spawnable prefabs change, if ever
+     * Looks through all loaded prefabs and determines which are spawnable, then stores them in a local SetMultimap This
+     * method should be called (or adders/removers?) whenever available spawnable prefabs change, if ever
      */
     public void cacheTypes() {
         Collection<Prefab> spawnablePrefabs = prefabManager.listPrefabs(SpawnableComponent.class);
@@ -126,6 +107,7 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
     /**
      * On entity creation or attachment of SpawnerComponent to an entity schedule events to spawn things periodically.
      * We also require the Spawner to have a Location to avoid situations like Spawner blocks in an inventory.
+     *
      * @param event the OnAddedComponent event to react to.
      * @param spawner the spawner entity being created or modified.
      */
@@ -140,6 +122,7 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
 
     /**
      * On entity destruction or detachment of SpawnerComponent to an entity cancel the schedule for spawning
+     *
      * @param event the BeforeRemoveComponent event to react to.
      * @param spawner the spawner entity being destroyed or modified.
      */
@@ -154,6 +137,7 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
 
     /**
      * A Spawner has "ticked" for its duration between spawning attempts, see if anything should be spawned.
+     *
      * @param event the PeriodicActionTriggeredEvent from the scheduler to react to.
      * @param spawner the spawner entity about to be processed.
      */
@@ -212,9 +196,12 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
                 spawnerComp.lastTick = tick;
 
                 if (spawnerComp.maxMobsPerSpawner > 0) {
-                    // TODO Make sure we don't spawn too much stuff. Not very robust yet and doesn't tie mobs to their spawner of origin right
-                    //int maxMobs = entityManager.getCountOfEntitiesWith(SpawnerComponent.class) * spawnerComp.maxMobsPerSpawner;
-                    //int currentMobs = entityManager.getCountOfEntitiesWith(SimpleAIComponent.class) + entityManager.getCountOfEntitiesWith(HierarchicalAIComponent.class);
+                    // TODO Make sure we don't spawn too much stuff. Not very robust yet and doesn't tie mobs to 
+                    //  their spawner of origin right
+                    //int maxMobs = entityManager.getCountOfEntitiesWith(SpawnerComponent.class) * spawnerComp
+                    // .maxMobsPerSpawner;
+                    //int currentMobs = entityManager.getCountOfEntitiesWith(SimpleAIComponent.class) + entityManager
+                    // .getCountOfEntitiesWith(HierarchicalAIComponent.class);
                     int currentMobs = entityManager.getCountOfEntitiesWith(SimpleAIComponent.class);
 
                     logger.info("Mob count: {}/{}", currentMobs, maxMobs);
@@ -245,7 +232,8 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
                 // Spawn origin
                 Vector3f originPos = entity.getComponent(LocationComponent.class).getWorldPosition();
 /*
-                TODO: Commented out pending new way of iterating through players, may need a new PlayerComponent attached to player entities
+                TODO: Commented out pending new way of iterating through players, may need a new PlayerComponent 
+                 attached to player entities
                 // Check for spawning that depends on a player position (like being within a certain range)
                 if (spawnerComp.needsPlayer) {
                     // TODO: shouldn't use local player, need some way to find nearest player
@@ -255,7 +243,8 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
                         dist.sub(localPlayer.getPosition());
                         double distanceToPlayer = dist.lengthSquared();
                         if (distanceToPlayer > spawnerComp.playerNeedRange) {
-                            logger.info("Spawner {} too far from player {}<{}", entity.getId(), distanceToPlayer, spawnerComp.playerNeedRange);
+                            logger.info("Spawner {} too far from player {}<{}", entity.getId(), distanceToPlayer, 
+                            spawnerComp.playerNeedRange);
                             continue;
                         }
                     }
@@ -263,12 +252,14 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
 */
                 //TODO check for bigger creatures and creatures with special needs like biome
 
-                // In case we're doing ranged spawning we might be changing the exact spot to spawn at (otherwise they're the same)
+                // In case we're doing ranged spawning we might be changing the exact spot to spawn at (otherwise 
+                // they're the same)
                 Vector3f spawnPos = originPos;
                 if (spawnerComp.rangedSpawning) {
 
                     // Add random range on the x and z planes, leave y (height) unchanged for now
-                    spawnPos = new Vector3f(originPos.x + random.nextFloat() * spawnerComp.range, originPos.y, originPos.z + random.nextFloat() * spawnerComp.range);
+                    spawnPos = new Vector3f(originPos.x + random.nextFloat() * spawnerComp.range, originPos.y,
+                            originPos.z + random.nextFloat() * spawnerComp.range);
 
                     // If a minimum distance is set make sure we're beyond it
                     if (spawnerComp.minDistance != 0) {
@@ -283,11 +274,13 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
                     // Look for an open spawn position either above or below the chosen spot.
                     int offset = 1;
                     while (offset < 30) {
-                        if (worldProvider.getBlock(new Vector3f(spawnPos.x , spawnPos.y + offset, spawnPos.z)).isPenetrable()
-                                && validateSpawnPos(new Vector3f(spawnPos.x , spawnPos.y + offset, spawnPos.z), 1, 1, 1)) {
+                        if (worldProvider.getBlock(new Vector3f(spawnPos.x, spawnPos.y + offset, spawnPos.z)).isPenetrable()
+                                && validateSpawnPos(new Vector3f(spawnPos.x, spawnPos.y + offset, spawnPos.z), 1, 1,
+                                1)) {
                             break;
-                        } else if (worldProvider.getBlock(new Vector3f(spawnPos.x , spawnPos.y - offset, spawnPos.z)).isPenetrable()
-                                && validateSpawnPos(new Vector3f(spawnPos.x , spawnPos.y - offset, spawnPos.z), 1, 1, 1)) {
+                        } else if (worldProvider.getBlock(new Vector3f(spawnPos.x, spawnPos.y - offset, spawnPos.z)).isPenetrable()
+                                && validateSpawnPos(new Vector3f(spawnPos.x, spawnPos.y - offset, spawnPos.z), 1, 1,
+                                1)) {
                             offset *= -1;
                             break;
                         }
@@ -299,7 +292,7 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
                         logger.info("Failed to find an open position to spawn at, sad");
                         return;
                     } else {
-                        spawnPos = new Vector3f(spawnPos.x , spawnPos.y + offset, spawnPos.z);
+                        spawnPos = new Vector3f(spawnPos.x, spawnPos.y + offset, spawnPos.z);
                         logger.info("Found a valid spawn position that can fit the Spawnable! {}", spawnPos);
                     }
                 }
@@ -317,20 +310,24 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
                 int anotherRandomIndex = random.nextInt(randomType.size());
                 Object[] randomPrefabs = randomType.toArray();
                 Prefab chosenPrefab = (Prefab) randomPrefabs[anotherRandomIndex];
-                logger.info("Picked index {} of types {} which is a {}, to spawn at {}", anotherRandomIndex, chosenSpawnerType, chosenPrefab, spawnPos);
+                logger.info("Picked index {} of types {} which is a {}, to spawn at {}", anotherRandomIndex,
+                        chosenSpawnerType, chosenPrefab, spawnPos);
 
                 // See if the chosen Spawnable has an item it must consume on spawning and if the Spawner can provide it
-                // TODO: Find way for a Spawner to ignore this if it doesn't care about item consumption (even if Spawnable asks)
+                // TODO: Find way for a Spawner to ignore this if it doesn't care about item consumption (even if 
+                //  Spawnable asks)
                 String neededItem = chosenPrefab.getComponent(SpawnableComponent.class).itemToConsume;
                 if (neededItem != null) {
-                    logger.info("This spawnable has an item demand on spawning: {} - Does its spawner have an inventory?", neededItem);
+                    logger.info("This spawnable has an item demand on spawning: {} - Does its spawner have an " +
+                            "inventory?", neededItem);
                     if (entity.hasComponent(InventoryComponent.class)) {
                         logger.info("Yes - it has an inventory - entity: {}", entity);
 
                         BlockFamily neededFamily = blockMan.getBlockFamily(neededItem);
                         logger.info("Needed block family: {}", neededFamily);
                         // TODO: Improve from current evaluation of the first slot only (ideal for single-slot invs)
-                        // TODO: Also needs to be updated to match recent engine changes, but not really super important ...
+                        // TODO: Also needs to be updated to match recent engine changes, but not really super 
+                        //  important ...
                         //EntityRef firstSlot = invMan.getItemInSlot(entity, 0);
                         //logger.info("First slot {}", firstSlot);
 
@@ -395,8 +392,9 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
      */
     private boolean validateSpawnPos(Vector3f pos, int spawnableHeight, int spawnableDepth, int spawnableWidth) {
         // TODO: Fill in with clean code or even switch to a generic utility method.
-        // TODO: Could enhance this further with more suitability like ground below, water/non-water, etc. Just pass the whole prefab in
+        // TODO: Could enhance this further with more suitability like ground below, water/non-water, etc. Just pass 
+        //  the whole prefab in
         return true;
     }
-    
+
 }
