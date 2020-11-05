@@ -194,7 +194,7 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
             }
 
             // Go through entities that are Spawners and check to see if something should spawn
-            logger.info("Count of valid (also have a Location) Spawner entities: {}", spawnerEntities.size());
+            logger.debug("Count of valid (also have a Location) Spawner entities: {}", spawnerEntities.size());
             for (EntityRef entity : spawnerEntities) {
                 //logger.info("Found a spawner: {}", entity);
                 SpawnerComponent spawnerComp = entity.getComponent(SpawnerComponent.class);
@@ -217,7 +217,7 @@ public class SpawnerSystem extends BaseComponentSystem implements UpdateSubscrib
                     //int currentMobs = entityManager.getCountOfEntitiesWith(SimpleAIComponent.class) + entityManager.getCountOfEntitiesWith(HierarchicalAIComponent.class);
                     int currentMobs = entityManager.getCountOfEntitiesWith(SimpleAIComponent.class);
 
-                    logger.info("Mob count: {}/{}", currentMobs, maxMobs);
+                    logger.debug("Mob count: {}/{}", currentMobs, maxMobs);
 
                     // TODO Probably need something better to base this threshold on eventually
                     if (currentMobs >= maxMobs) {
